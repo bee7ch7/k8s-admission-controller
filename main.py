@@ -9,7 +9,7 @@ admission_controller = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
-
+# predefined resources section if not set
 resource_patch_operations = {
        "op": "add", "path": "/spec/template/spec/containers/0/resources", "value": {
         "requests": {
@@ -21,6 +21,12 @@ resource_patch_operations = {
             "memory": "400Mi"
         }
     }}
+
+# add custom labels
+all_patches = [
+   {"op": "add", "path": "/metadata/labels/custom_label", "value": "custom_value"},
+   {"op": "add", "path": "/spec/template/metadata/labels/custom_label", "value": "custom_value"},
+  ]
 
 @admission_controller.before_request
 def log_request_info():
@@ -38,12 +44,7 @@ def deployment_webhook_mutate():
     request_info = request.get_json()
     json_request = json.loads(request.get_data())
     uid = json.loads(request.get_data()).get('request', {}).get('uid', None)
-
-    all_patches = [
-       {"op": "add", "path": "/metadata/labels/allow", "value": "yes"},
-       {"op": "add", "path": "/spec/template/metadata/labels/allow", "value": "yes"},
-       ]
-    
+   
     # check if latest tag is used and drop request if so
     for idx, container in enumerate(json_request["request"]["object"]['spec']['template']['spec']['containers']):
       if ":latest" in container['image'] or ":" not in container['image']:
