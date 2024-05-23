@@ -26,10 +26,15 @@ spec:
             - mountPath: /app/certs
               name: certs
               readOnly: true
+            - mountPath: /app/config
+              name: settings
       volumes:
         - name: certs
           secret:
             secretName: root-secret
+        - name: settings
+          configMap:
+            name: admission-controller-cm
 ---
 apiVersion: v1
 kind: Service
@@ -51,24 +56,31 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: mutating-webhook
-  namespace: default
   labels:
     component: mutating-controller
   annotations:
-    cert-manager.io/inject-ca-from: default/mutating-replicant
+    cert-manager.io/inject-ca-from: adm-controller/admission-image-controller
 webhooks:
-  - name: admission-image-controller.default.svc
+  - name: deployments-admission-image-controller.adm-controller.svc
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            - "prod-airbyte"
+            - "staging-airbyte"
     failurePolicy: Fail
     sideEffects: None
     admissionReviewVersions: ["v1"]
     clientConfig:
       service:
         name: admission-image-controller
-        namespace: default
+        namespace: adm-controller
         path: /mutate/deployments
       # caBundle: <redacted> # a base64 encoded self signed ca cert is needed because all Admission Webhooks need to be on SSL
     rules:
       - apiGroups: ["apps"]
+        scope: "Namespaced"
         resources:
           - "deployments"
         apiVersions:
@@ -76,3 +88,94 @@ webhooks:
         operations:
           - CREATE
           - UPDATE
+  - name: pods-admission-image-controller.adm-controller.svc
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+            - "prod-airbyte"
+            - "staging-airbyte"
+    failurePolicy: Fail
+    sideEffects: None
+    admissionReviewVersions: ["v1"]
+    clientConfig:
+      service:
+        name: admission-image-controller
+        namespace: adm-controller
+        path: /mutate/pods
+      # caBundle: <redacted> # a base64 encoded self signed ca cert is needed because all Admission Webhooks need to be on SSL
+    rules:
+      - apiGroups: [""]
+        scope: "Namespaced"
+        resources:
+          - "pods"
+        apiVersions:
+          - "v1"
+        operations:
+          - CREATE
+          - UPDATE
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: admission-controller-cm
+data:
+  settings.json: |-
+    {
+      "checks": {
+        "image_tags": false,
+        "deployments": false,
+        "pods": true,
+        "labels": false,
+        "annotations": false
+      },
+      "pods": {
+        "names": {
+          "busybox": {
+            "container_names": {
+              "mysql": {
+                "resources": {
+                  "requests": {
+                    "cpu": "111m",
+                    "memory": "222Mi"
+                  },
+                  "limits": {
+                    "cpu": "222m",
+                    "memory": "444Mi"
+                  }
+                }
+              },
+              "busybox": {
+                "resources": {
+                  "requests": {
+                    "cpu": "333m",
+                    "memory": "333Mi"
+                  },
+                  "limits": {
+                    "cpu": "444m",
+                    "memory": "555Mi"
+                  }
+                }
+              }
+            }
+          },
+          "nginx": {
+            "container_names": {
+              "nginx": {
+                "resources": {
+                  "requests": {
+                    "cpu": "333m",
+                    "memory": "333Mi"
+                  },
+                  "limits": {
+                    "cpu": "444m",
+                    "memory": "444Mi"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }

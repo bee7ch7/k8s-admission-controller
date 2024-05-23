@@ -1,0 +1,59 @@
+{
+  "checks": {
+    "image_tags": true,
+    "deployments": false,
+    "pods": true,
+    "labels": true,
+    "annotations": true
+  },
+  "add_global_labels": {
+    "global_label_custom1": "label_custom_value1",
+    "global_label_custom2": "label_custom_value2",
+    "global_label_custom3": "label_custom_value3"
+  },
+  "add_global_annotations": {
+    "global_ann_custom1": "ann_custom_value1",
+    "global_ann_custom2": "ann_custom_value2",
+    "global_ann_custom3": "ann_custom_value3"
+  },
+  "pods": {
+    "names": {
+      "nginx": {
+        "add_labels": {
+          "nginx_label_custom1": "label_custom_value1",
+          "nginx_label_custom2": "label_custom_value2"
+        },
+        "add_annotations": {
+          "nginx_ann_custom1": "ann_custom_value1",
+          "nginx_ann_custom2": "ann_custom_value2"
+        },
+        "container_names": {
+          "nginx": {
+            "resources": {
+              "requests": {
+                "cpu": "111m",
+                "memory": "222Mi"
+              },
+              "limits": {
+                "cpu": "222m",
+                "memory": "444Mi"
+              }
+            }
+          },
+          "busybox": {
+            "resources": {
+              "requests": {
+                "cpu": "333m",
+                "memory": "333Mi"
+              },
+              "limits": {
+                "cpu": "444m",
+                "memory": "555Mi"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
